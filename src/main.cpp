@@ -29,8 +29,11 @@ Distributed as-is; no warranty is given.
 #include <SparkFunESP8266WiFi.h>
 #include <Wire.h> //I2C needed for sensors
 #include "SparkFunMPL3115A2.h" //Pressure sensor - Search "SparkFun MPL3115" and install from Library Manager
-//#include "SparkFun_Si7021_Breakout_Library.h" //Humidity sensor - Search "SparkFun Si7021" and install from Library Manager
+#include "SparkFun_Si7021_Breakout_Library.h" //Humidity sensor - Search "SparkFun Si7021" and install from Library Manager
 
+
+MPL3115A2 myPressure; //Create an instance of the pressure sensor
+Weather myHumidity;//Create an instance of the humidity sensor
 
 //////////////////////////////
 // WiFi Network Definitions //
@@ -51,13 +54,6 @@ const byte LIGHT = A1;
 const byte BATT = A2;
 const byte WDIR = A0;
 
-//////////////////////////////
-// ESP8266Server definition //
-//////////////////////////////
-// server object used towards the end of the demo.
-// (This is only global because it's called in both setup()
-// and loop()).
-ESP8266Server server = ESP8266Server(80);
 
 //////////////////
 // HTTP Strings //
@@ -94,9 +90,10 @@ volatile byte windClicks = 0;
 //Rain over the past hour (store 1 per minute)
 //Total rain over date (store one per day)
 
-byte windspdavg[120]; //120 bytes to keep track of 2 minute average
+#define WIND_DIR_AVG_SIZE 10
+byte windspdavg[WIND_DIR_AVG_SIZE]; //120 bytes to keep track of 2 minute average
 
-#define WIND_DIR_AVG_SIZE 120
+
 int winddiravg[WIND_DIR_AVG_SIZE]; //120 ints to keep track of 2 minute average
 float windgust_10m[10]; //10 floats to keep track of 10 minute max
 int windgustdirection_10m[10]; //10 ints to keep track of 10 minute max
@@ -333,9 +330,279 @@ void setup()
   
 }
 
+
+//Returns the voltage of the raw pin based on the 3.3V rail
+//This allows us to ignore what VCC might be (an Arduino plugged into USB has VCC of 4.5 to 5.2V)
+//Battery level is connected to the RAW pin on Arduino and is fed through two 5% resistors:
+//3.9K on the high side (R1), and 1K on the low side (R2)
+float get_battery_level()
+{
+  float operatingVoltage = analogRead(REFERENCE_3V3);
+
+  float rawVoltage = analogRead(BATT);
+
+  operatingVoltage = 3.30 / operatingVoltage; //The reference voltage is 3.3V
+
+  rawVoltage = operatingVoltage * rawVoltage; //Convert the 0 to 1023 int to actual voltage on BATT pin
+
+  rawVoltage *= 4.90; //(3.9k+1k)/1k - multiple BATT voltage by the voltage divider to get actual system voltage
+
+  return (rawVoltage);
+}
+
+//Returns the instataneous wind speed
+float get_wind_speed()
+{
+  float deltaTime = millis() - lastWindCheck; //750ms
+
+  deltaTime /= 1000.0; //Covert to seconds
+
+  float windSpeed = (float)windClicks / deltaTime; //3 / 0.750s = 4
+
+  windClicks = 0; //Reset and start watching for new wind
+  lastWindCheck = millis();
+
+  windSpeed *= 1.492; //4 * 1.492 = 5.968MPH
+
+  /* Serial.println();
+    Serial.print("Windspeed:");
+    Serial.println(windSpeed);*/
+
+  return (windSpeed);
+}
+
+
+
+float get_light_level()
+{
+  float operatingVoltage = analogRead(REFERENCE_3V3);
+
+  float lightSensor = analogRead(LIGHT);
+
+  operatingVoltage = 3.3 / operatingVoltage; //The reference voltage is 3.3V
+
+  lightSensor = operatingVoltage * lightSensor;
+
+  return (lightSensor);
+}
+
+
+int get_wind_direction()
+{
+  unsigned int adc;
+
+  adc = analogRead(WDIR); // get the current reading from the sensor
+
+  // The following table is ADC readings for the wind direction sensor output, sorted from low to high.
+  // Each threshold is the midpoint between adjacent headings. The output is degrees for that ADC reading.
+  // Note that these are not in compass degree order! See Weather Meters datasheet for more information.
+
+  if (adc < 380) return (113);
+  if (adc < 393) return (68);
+  if (adc < 414) return (90);
+  if (adc < 456) return (158);
+  if (adc < 508) return (135);
+  if (adc < 551) return (203);
+  if (adc < 615) return (180);
+  if (adc < 680) return (23);
+  if (adc < 746) return (45);
+  if (adc < 801) return (248);
+  if (adc < 833) return (225);
+  if (adc < 878) return (338);
+  if (adc < 913) return (0);
+  if (adc < 940) return (293);
+  if (adc < 967) return (315);
+  if (adc < 990) return (270);
+  return (-1); // error, disconnected?
+}
+
+void calcWeather()
+{
+  //Calc winddir
+  winddir = get_wind_direction();
+
+  //Calc windspeed
+  //windspeedmph = get_wind_speed(); //This is calculated in the main loop on line 185
+
+  //Calc windgustmph
+  //Calc windgustdir
+  //These are calculated in the main loop
+
+  //Calc windspdmph_avg2m
+  float temp = 0;
+  for (int i = 0 ; i < WIND_DIR_AVG_SIZE ; i++)
+    temp += windspdavg[i];
+  temp /= WIND_DIR_AVG_SIZE;
+  windspdmph_avg2m = temp;
+
+  //Calc winddir_avg2m, Wind Direction
+  //You can't just take the average. Google "mean of circular quantities" for more info
+  //We will use the Mitsuta method because it doesn't require trig functions
+  //And because it sounds cool.
+  //Based on: http://abelian.org/vlf/bearings.html
+  //Based on: http://stackoverflow.com/questions/1813483/averaging-angles-again
+  long sum = winddiravg[0];
+  int D = winddiravg[0];
+  for (int i = 1 ; i < WIND_DIR_AVG_SIZE ; i++)
+  {
+    int delta = winddiravg[i] - D;
+
+    if (delta < -180)
+      D += delta + 360;
+    else if (delta > 180)
+      D += delta - 360;
+    else
+      D += delta;
+
+    sum += D;
+  }
+  winddir_avg2m = sum / WIND_DIR_AVG_SIZE;
+  if (winddir_avg2m >= 360) winddir_avg2m -= 360;
+  if (winddir_avg2m < 0) winddir_avg2m += 360;
+
+  //Calc windgustmph_10m
+  //Calc windgustdir_10m
+  //Find the largest windgust in the last 10 minutes
+  windgustmph_10m = 0;
+  windgustdir_10m = 0;
+  //Step through the 10 minutes
+  for (int i = 0; i < 10 ; i++)
+  {
+    if (windgust_10m[i] > windgustmph_10m)
+    {
+      windgustmph_10m = windgust_10m[i];
+      windgustdir_10m = windgustdirection_10m[i];
+    }
+  }
+
+  //Calc humidity
+  humidity = myHumidity.getRH();
+  //float temp_h = myHumidity.readTemperature();
+  //Serial.print(" TempH:");
+  //Serial.print(temp_h, 2);
+
+  //Calc tempf from pressure sensor
+  tempf = myPressure.readTempF();
+  //Serial.print(" TempP:");
+  //Serial.print(tempf, 2);
+
+  //Total rainfall for the day is calculated within the interrupt
+  //Calculate amount of rainfall for the last 60 minutes
+  rainin = 0;
+  for (int i = 0 ; i < 60 ; i++)
+    rainin += rainHour[i];
+
+  //Calc pressure
+  pressure = myPressure.readPressure();
+
+  //Calc dewptf
+
+  //Calc light level
+  light_lvl = get_light_level();
+
+  //Calc battery level
+  batt_lvl = get_battery_level();
+}
+
+
+void printWeather()
+{
+  calcWeather(); //Go calc all the various sensors
+
+  /*Serial.println();
+  Serial.print("$,winddir=");
+  Serial.print(winddir);
+  Serial.print(",windspeedmph=");
+  Serial.print(windspeedmph, 1);
+  Serial.print(",windgustmph=");
+  Serial.print(windgustmph, 1);
+  Serial.print(",windgustdir=");
+  Serial.print(windgustdir);
+  Serial.print(",windspdmph_avg2m=");
+  Serial.print(windspdmph_avg2m, 1);
+  Serial.print(",winddir_avg2m=");
+  Serial.print(winddir_avg2m);
+  Serial.print(",windgustmph_10m=");
+  Serial.print(windgustmph_10m, 1);
+  Serial.print(",windgustdir_10m=");
+  Serial.print(windgustdir_10m);
+  Serial.print(",humidity=");
+  Serial.print(humidity, 1);
+  Serial.print(",tempf=");
+  Serial.print(tempf, 1);
+  Serial.print(",rainin=");
+  Serial.print(rainin, 2);
+  Serial.print(",dailyrainin=");
+  Serial.print(dailyrainin, 2);
+  Serial.print(",pressure=");
+  Serial.print(pressure, 2);
+  Serial.print(",batt_lvl=");
+  Serial.print(batt_lvl, 2);
+  Serial.print(",light_lvl=");
+  Serial.print(light_lvl, 2);
+  Serial.print(",");
+  Serial.println("#"); */
+
+}
+
 void loop() 
 {
+
   clientDemo();
+
+  
+   
+
+    //digitalWrite(STAT1, HIGH); //Blink stat LED
+
+    lastSecond += 1000;
+
+    //Take a speed and direction reading every second for 2 minute average
+    if (++seconds_2m > 119) seconds_2m = 0;
+
+    //Calc the wind speed and direction every second for 120 second to get 2 minute average
+    float currentSpeed = get_wind_speed();
+    windspeedmph = currentSpeed;//update global variable for windspeed when using the printWeather() function
+    //float currentSpeed = random(5); //For testing
+    int currentDirection = get_wind_direction();
+    windspdavg[seconds_2m] = (int)currentSpeed;
+    winddiravg[seconds_2m] = currentDirection;
+    //if(seconds_2m % 10 == 0) displayArrays(); //For testing
+
+    //Check to see if this is a gust for the minute
+    if (currentSpeed > windgust_10m[minutes_10m])
+    {
+      windgust_10m[minutes_10m] = currentSpeed;
+      windgustdirection_10m[minutes_10m] = currentDirection;
+    }
+
+    //Check to see if this is a gust for the day
+    if (currentSpeed > windgustmph)
+    {
+      windgustmph = currentSpeed;
+      windgustdir = currentDirection;
+    }
+
+    if (++seconds > 59)
+    {
+      seconds = 0;
+
+      if (++minutes > 59) minutes = 0;
+      if (++minutes_10m > 9) minutes_10m = 0;
+
+      rainHour[minutes] = 0; //Zero out this minute's rainfall amount
+      windgust_10m[minutes_10m] = 0; //Zero out this minute's gust
+    }
+
+    //Report all readings every second
+     printWeather();
+
+    //digitalWrite(STAT1, LOW); //Turn off stat LED
+
+    
+
+
+  
   delay(1000);
 }
 
