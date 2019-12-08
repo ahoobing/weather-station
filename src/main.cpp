@@ -47,16 +47,16 @@ ESP8266Server server = ESP8266Server(80);
 //////////////////
 // HTTP Strings //
 //////////////////
-const char destServer[] = "example.com";
+const char destServer[] = "weather-server-hoob.herokuapp.com";
 const String htmlHeader = "HTTP/1.1 200 OK\r\n"
                           "Content-Type: text/html\r\n"
                           "Connection: close\r\n\r\n"
                           "<!DOCTYPE HTML>\r\n"
                           "<html>\r\n";
 
-const String httpRequest = "GET / HTTP/1.1\n"
-                           "Host: example.com\n"
-                           "Connection: close\n\n";
+const String httpRequest = "GET / HTTP/1.1\r\n"
+                           "Host: weather-server-hoob.herokuapp.com\r\n"
+                           "Connection: close\r\n\r\n";
 
 
 // errorLoop prints an error code, then loops forever.
@@ -68,18 +68,6 @@ void errorLoop(int error)
     ;
 }
 
-// serialTrigger prints a message, then waits for something
-// to come in from the serial port.
-void serialTrigger(String message)
-{
-  Serial.println();
-  Serial.println(message);
-  Serial.println();
-  while (!Serial.available())
-    ;
-  while (Serial.available())
-    Serial.read();
-}
 
 void displayConnectInfo()
 {
@@ -196,79 +184,8 @@ void connectESP8266()
   }
 }
 
-void serverSetup()
-{
-  // begin initializes a ESP8266Server object. It will
-  // start a server on the port specified in the object's
-  // constructor (in global area)
-  server.begin();
-  Serial.print(F("Server started! Go to "));
-  Serial.println(esp8266.localIP());
-  Serial.println();
-}
 
-void serverDemo()
-{
-  // available() is an ESP8266Server function which will
-  // return an ESP8266Client object for printing and reading.
-  // available() has one parameter -- a timeout value. This
-  // is the number of milliseconds the function waits,
-  // checking for a connection.
-  ESP8266Client client = server.available(500);
-  
-  if (client) 
-  {
-    Serial.println(F("Client Connected!"));
-    // an http request ends with a blank line
-    boolean currentLineIsBlank = true;
-    while (client.connected()) 
-    {
-      if (client.available()) 
-      {
-        char c = client.read();
-        // if you've gotten to the end of the line (received a newline
-        // character) and the line is blank, the http request has ended,
-        // so you can send a reply
-        if (c == '\n' && currentLineIsBlank) 
-        {
-          Serial.println(F("Sending HTML page"));
-          // send a standard http response header:
-          client.print(htmlHeader);
-          String htmlBody;
-          // output the value of each analog input pin
-          for (int a = 0; a < 6; a++)
-          {
-            htmlBody += "A";
-            htmlBody += String(a);
-            htmlBody += ": ";
-            htmlBody += String(analogRead(a));
-            htmlBody += "<br>\n";
-          }
-          htmlBody += "</html>\n";
-          client.print(htmlBody);
-          break;
-        }
-        if (c == '\n') 
-        {
-          // you're starting a new line
-          currentLineIsBlank = true;
-        }
-        else if (c != '\r') 
-        {
-          // you've gotten a character on the current line
-          currentLineIsBlank = false;
-        }
-      }
-    }
-    // give the web browser time to receive the data
-    delay(1);
-   
-    // close the connection:
-    client.stop();
-    Serial.println(F("Client disconnected"));
-  }
-  
-}
+
 
 
 
@@ -282,7 +199,7 @@ void setup()
   // Serial Monitor is used to control the demo and view
   // debug information.
   Serial.begin(9600);
-  serialTrigger(F("Press any key to begin."));
+ 
 
   // initializeESP8266() verifies communication with the WiFi
   // shield, and sets it up.
@@ -295,16 +212,17 @@ void setup()
   // and the network it's connected to.
   displayConnectInfo();
 
-  serialTrigger(F("Press any key to connect client."));
+  
   clientDemo();
   
-  serialTrigger(F("Press any key to test server."));
-  serverSetup();
+  
+  
 }
 
 void loop() 
 {
-  serverDemo();
+  clientDemo();
+  delay(1000);
 }
 
 
