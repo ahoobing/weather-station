@@ -189,8 +189,9 @@ void clientDemo()
   /*const String httpRequest = "GET /users HTTP/1.1\r\n"
                            "Host: weather-server-hoob.herokuapp.com\r\n"
                            "Connection: close\r\n\r\n";*/
-
- String postData = "foo=1";
+ String tempfData = "t=" + String(tempf);
+ String humidityData = "&h=" + String(humidity);
+ String postData = tempfData + humidityData;
 
  /*const String httpPostRequest = "POST /stats HTTP1.1\r\n"
                                "Host: weather-server-hoob.herokuapp.com\r\n"
@@ -330,7 +331,7 @@ void setup()
   // and the network it's connected to.
   displayConnectInfo();
 
-  pinMode(STAT1, OUTPUT); //Status LED Blue
+ // pinMode(STAT1, OUTPUT); //Status LED Blue
 
   //TODO This causes the server requests to not work.
  // pinMode(STAT2, OUTPUT); //Status LED Green
@@ -338,11 +339,16 @@ void setup()
   pinMode(WSPEED, INPUT_PULLUP); // input from wind meters windspeed sensor
   pinMode(RAIN, INPUT_PULLUP); // input from wind meters rain gauge sensor
 
-  pinMode(REFERENCE_3V3, INPUT);
-  pinMode(LIGHT, INPUT);
+  /*pinMode(REFERENCE_3V3, OUTPUT);
+  pinMode(BATT, OUTPUT);
 
-  seconds = 0;
-  lastSecond = millis();
+  digitalWrite(REFERENCE_3V3, HIGH);
+  digitalWrite(BATT, LOW);*/
+
+  myHumidity.begin();
+
+ // seconds = 0;
+ // lastSecond = millis();
 
   // attach external interrupt pins to IRQ functions
   attachInterrupt(0, rainIRQ, FALLING);
@@ -505,9 +511,9 @@ void calcWeather()
   //Serial.print(temp_h, 2);
 
   //Calc tempf from pressure sensor
-  tempf = myPressure.readTempF();
+  // tempf = myPressure.readTempF();
   //Serial.print(" TempP:");
-  //Serial.print(tempf, 2);
+ // Serial.print(tempf, 2);
 
   //Total rainfall for the day is calculated within the interrupt
   //Calculate amount of rainfall for the last 60 minutes
@@ -517,6 +523,8 @@ void calcWeather()
 
   //Calc pressure
   pressure = myPressure.readPressure();
+  Serial.print(" Pressure ");
+  Serial.print( pressure, 2);
 
   //Calc dewptf
 
@@ -532,7 +540,7 @@ void printWeather()
 {
   calcWeather(); //Go calc all the various sensors
 
-  /*Serial.println();
+ /* Serial.println();
   Serial.print("$,winddir=");
   Serial.print(winddir);
   Serial.print(",windspeedmph=");
@@ -578,7 +586,7 @@ void loop()
 
     //digitalWrite(STAT1, HIGH); //Blink stat LED
 
-    lastSecond += 1000;
+  /**  lastSecond += 1000;
 
     //Take a speed and direction reading every second for 2 minute average
     if (++seconds_2m > 119) seconds_2m = 0;
@@ -620,9 +628,26 @@ void loop()
     //Report all readings every second
      printWeather();
 
-    //digitalWrite(STAT1, LOW); //Turn off stat LED
+    //digitalWrite(STAT1, LOW); //Turn off stat LED  */
 
-    
+
+
+    // Measure Relative Humidity from the HTU21D or Si7021
+  humidity = myHumidity.getRH();
+
+  // Measure Temperature from the HTU21D or Si7021
+  tempf = myHumidity.getTempF();
+
+  Serial.print("Temp:");
+  Serial.print(tempf);
+  Serial.print("F, ");
+
+  Serial.print("Humidity:");
+  Serial.print(humidity);
+  Serial.println("%");
+  // Temperature is measured every time RH is requested.
+  // It is faster, therefore, to read it from previous RH
+  // measurement with getTemp() instead with readTemp()
 
 
   
