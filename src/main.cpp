@@ -58,16 +58,15 @@ const byte WDIR = A0;
 //////////////////
 // HTTP Strings //
 //////////////////
-const char destServer[] = "weather-server-hoob.herokuapp.com";
-const String htmlHeader = "HTTP/1.1 200 OK\r\n"
+const char destServer[] = "https://weather-server-hoob.herokuapp.com";
+/*const String htmlHeader = "HTTP/1.1 200 OK\r\n"
                           "Content-Type: text/html\r\n"
                           "Connection: close\r\n\r\n"
                           "<!DOCTYPE HTML>\r\n"
-                          "<html>\r\n";
+                          "<html>\r\n";*/
 
-const String httpRequest = "GET / HTTP/1.1\r\n"
-                           "Host: weather-server-hoob.herokuapp.com\r\n"
-                           "Connection: close\r\n\r\n";
+
+
 
 
 //Global Variables
@@ -186,6 +185,19 @@ void displayConnectInfo()
 
 void clientDemo()
 {
+
+  /*const String httpRequest = "GET /users HTTP/1.1\r\n"
+                           "Host: weather-server-hoob.herokuapp.com\r\n"
+                           "Connection: close\r\n\r\n";*/
+
+ String postData = "foo=1";
+
+ /*const String httpPostRequest = "POST /stats HTTP1.1\r\n"
+                               "Host: weather-server-hoob.herokuapp.com\r\n"
+                               "Content-Type: application/x-www-form-urlencoded.\r\n" 
+                               "Conent-Length: 9\r\n"
+                               "foo=1\r\n\r\n";*/
+
   // To use the ESP8266 as a TCP client, use the 
   // ESP8266Client class. First, create an object:
   ESP8266Client client;
@@ -204,7 +216,18 @@ void clientDemo()
 
   // print and write can be used to send data to a connected
   // client connection.
-  client.print(httpRequest);
+  //client.print(httpPostRequest);
+  Serial.println("made it here");
+  client.println("POST /stats HTTP/1.1");
+  client.println("Host: weather-server-hoob.herokuapp.com");
+  client.println("Content-Type: application/x-www-form-urlencoded");
+  client.print("Content-Length: ");
+  client.println(postData.length());
+  client.println();
+  client.println(postData);
+  
+ 
+   Serial.println("again");
 
   // available() will return the number of characters
   // currently in the receive buffer.
