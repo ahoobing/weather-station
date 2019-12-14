@@ -89,13 +89,13 @@ volatile byte windClicks = 0;
 //Rain over the past hour (store 1 per minute)
 //Total rain over date (store one per day)
 
-#define WIND_DIR_AVG_SIZE 10
-byte windspdavg[WIND_DIR_AVG_SIZE]; //120 bytes to keep track of 2 minute average
+////#define WIND_DIR_AVG_SIZE 10
+//byte windspdavg[WIND_DIR_AVG_SIZE]; //120 bytes to keep track of 2 minute average
 
 
-int winddiravg[WIND_DIR_AVG_SIZE]; //120 ints to keep track of 2 minute average
-float windgust_10m[10]; //10 floats to keep track of 10 minute max
-int windgustdirection_10m[10]; //10 ints to keep track of 10 minute max
+//int winddiravg[WIND_DIR_AVG_SIZE]; //120 ints to keep track of 2 minute average
+//float windgust_10m[10]; //10 floats to keep track of 10 minute max
+//int windgustdirection_10m[10]; //10 ints to keep track of 10 minute max
 volatile float rainHour[60]; //60 floating numbers to keep track of 60 minutes of rain
 
 //These are all the weather values that wunderground expects:
@@ -120,6 +120,10 @@ float light_lvl = 455; //[analog value from 0 to 1023]
 
 // volatiles are subject to modification by IRQs
 volatile unsigned long raintime, rainlast, raininterval, rain;
+
+
+//char postDataString[50];
+
 
 
 //Interrupt routines (these are called by the hardware interrupts, not by the main code)
@@ -186,12 +190,18 @@ void displayConnectInfo()
 void clientDemo()
 {
 
-  /*const String httpRequest = "GET /users HTTP/1.1\r\n"
-                           "Host: weather-server-hoob.herokuapp.com\r\n"
-                           "Connection: close\r\n\r\n";*/
- String tempfData = "t=" + String(tempf);
- String humidityData = "&h=" + String(humidity);
- String postData = tempfData + humidityData;
+
+  //sprintf(postDataString, "t=%f\n", tempf);
+
+
+
+//postDataString += "t=" + tempf;
+       
+ //String tempfData = "t=" + String(tempf);
+ //String humidityData = "&h=" + String(humidity) + "&b=" + String(batt_lvl) + "&l=" + String(light_lvl) + "&w=" + String(windspeedmph); // + "&wd=10"; //+ String(winddir); // + "&r=" + String(rainin);
+ //String postData = tempfData + humidityData;
+
+ //Serial.println("length = " + strlen(postDataString));
 
  /*const String httpPostRequest = "POST /stats HTTP1.1\r\n"
                                "Host: weather-server-hoob.herokuapp.com\r\n"
@@ -223,9 +233,18 @@ void clientDemo()
   client.println("Host: weather-server-hoob.herokuapp.com");
   client.println("Content-Type: application/x-www-form-urlencoded");
   client.print("Content-Length: ");
-  client.println(postData.length());
+  client.println(50);
   client.println();
-  client.println(postData);
+  client.print("t=" + String(tempf));
+  client.print("&h=" + String(humidity));
+  client.print("&b=" + String(batt_lvl));
+  client.print("&l=" + String(light_lvl));
+  client.print("&wd=10" + String(winddir));
+  client.print("&r=" + String(rainin));
+  client.println("&w=" + String(windspeedmph));
+  
+
+  //client.println(postDataString);
   
  
    Serial.println("again");
@@ -458,11 +477,11 @@ void calcWeather()
   //These are calculated in the main loop
 
   //Calc windspdmph_avg2m
-  float temp = 0;
+  /*float temp = 0;
   for (int i = 0 ; i < WIND_DIR_AVG_SIZE ; i++)
     temp += windspdavg[i];
   temp /= WIND_DIR_AVG_SIZE;
-  windspdmph_avg2m = temp;
+  windspdmph_avg2m = temp;*/
 
   //Calc winddir_avg2m, Wind Direction
   //You can't just take the average. Google "mean of circular quantities" for more info
@@ -470,7 +489,7 @@ void calcWeather()
   //And because it sounds cool.
   //Based on: http://abelian.org/vlf/bearings.html
   //Based on: http://stackoverflow.com/questions/1813483/averaging-angles-again
-  long sum = winddiravg[0];
+  /*long sum = winddiravg[0];
   int D = winddiravg[0];
   for (int i = 1 ; i < WIND_DIR_AVG_SIZE ; i++)
   {
@@ -487,12 +506,12 @@ void calcWeather()
   }
   winddir_avg2m = sum / WIND_DIR_AVG_SIZE;
   if (winddir_avg2m >= 360) winddir_avg2m -= 360;
-  if (winddir_avg2m < 0) winddir_avg2m += 360;
+  if (winddir_avg2m < 0) winddir_avg2m += 360; */
 
   //Calc windgustmph_10m
   //Calc windgustdir_10m
   //Find the largest windgust in the last 10 minutes
-  windgustmph_10m = 0;
+  /*windgustmph_10m = 0;
   windgustdir_10m = 0;
   //Step through the 10 minutes
   for (int i = 0; i < 10 ; i++)
@@ -502,29 +521,29 @@ void calcWeather()
       windgustmph_10m = windgust_10m[i];
       windgustdir_10m = windgustdirection_10m[i];
     }
-  }
+  } */
 
-  //Calc humidity
+  
   humidity = myHumidity.getRH();
   //float temp_h = myHumidity.readTemperature();
   //Serial.print(" TempH:");
   //Serial.print(temp_h, 2);
 
   //Calc tempf from pressure sensor
-  // tempf = myPressure.readTempF();
+   tempf = myHumidity.readTempF();
   //Serial.print(" TempP:");
  // Serial.print(tempf, 2);
 
   //Total rainfall for the day is calculated within the interrupt
   //Calculate amount of rainfall for the last 60 minutes
   rainin = 0;
-  for (int i = 0 ; i < 60 ; i++)
-    rainin += rainHour[i];
+  /*for (int i = 0 ; i < 60 ; i++)
+    rainin += rainHour[i]; */
 
   //Calc pressure
   pressure = myPressure.readPressure();
-  Serial.print(" Pressure ");
-  Serial.print( pressure, 2);
+ /* Serial.print(" Pressure ");
+  Serial.print( pressure, 2); */
 
   //Calc dewptf
 
@@ -536,49 +555,12 @@ void calcWeather()
 }
 
 
-void printWeather()
-{
-  calcWeather(); //Go calc all the various sensors
 
- /* Serial.println();
-  Serial.print("$,winddir=");
-  Serial.print(winddir);
-  Serial.print(",windspeedmph=");
-  Serial.print(windspeedmph, 1);
-  Serial.print(",windgustmph=");
-  Serial.print(windgustmph, 1);
-  Serial.print(",windgustdir=");
-  Serial.print(windgustdir);
-  Serial.print(",windspdmph_avg2m=");
-  Serial.print(windspdmph_avg2m, 1);
-  Serial.print(",winddir_avg2m=");
-  Serial.print(winddir_avg2m);
-  Serial.print(",windgustmph_10m=");
-  Serial.print(windgustmph_10m, 1);
-  Serial.print(",windgustdir_10m=");
-  Serial.print(windgustdir_10m);
-  Serial.print(",humidity=");
-  Serial.print(humidity, 1);
-  Serial.print(",tempf=");
-  Serial.print(tempf, 1);
-  Serial.print(",rainin=");
-  Serial.print(rainin, 2);
-  Serial.print(",dailyrainin=");
-  Serial.print(dailyrainin, 2);
-  Serial.print(",pressure=");
-  Serial.print(pressure, 2);
-  Serial.print(",batt_lvl=");
-  Serial.print(batt_lvl, 2);
-  Serial.print(",light_lvl=");
-  Serial.print(light_lvl, 2);
-  Serial.print(",");
-  Serial.println("#"); */
-
-}
 
 void loop() 
 {
 
+  calcWeather();
   clientDemo();
 
   
@@ -586,7 +568,7 @@ void loop()
 
     //digitalWrite(STAT1, HIGH); //Blink stat LED
 
-  /**  lastSecond += 1000;
+    lastSecond += 1000;
 
     //Take a speed and direction reading every second for 2 minute average
     if (++seconds_2m > 119) seconds_2m = 0;
@@ -596,23 +578,23 @@ void loop()
     windspeedmph = currentSpeed;//update global variable for windspeed when using the printWeather() function
     //float currentSpeed = random(5); //For testing
     int currentDirection = get_wind_direction();
-    windspdavg[seconds_2m] = (int)currentSpeed;
-    winddiravg[seconds_2m] = currentDirection;
+  /*  windspdavg[seconds_2m] = (int)currentSpeed;
+    winddiravg[seconds_2m] = currentDirection; */
     //if(seconds_2m % 10 == 0) displayArrays(); //For testing
 
     //Check to see if this is a gust for the minute
-    if (currentSpeed > windgust_10m[minutes_10m])
+    /*if (currentSpeed > windgust_10m[minutes_10m])
     {
       windgust_10m[minutes_10m] = currentSpeed;
       windgustdirection_10m[minutes_10m] = currentDirection;
-    }
+    }*/
 
     //Check to see if this is a gust for the day
-    if (currentSpeed > windgustmph)
+   /* if (currentSpeed > windgustmph)
     {
       windgustmph = currentSpeed;
       windgustdir = currentDirection;
-    }
+    } */
 
     if (++seconds > 59)
     {
@@ -622,29 +604,25 @@ void loop()
       if (++minutes_10m > 9) minutes_10m = 0;
 
       rainHour[minutes] = 0; //Zero out this minute's rainfall amount
-      windgust_10m[minutes_10m] = 0; //Zero out this minute's gust
+      //windgust_10m[minutes_10m] = 0; //Zero out this minute's gust
     }
 
     //Report all readings every second
-     printWeather();
+     //printWeather();
 
     //digitalWrite(STAT1, LOW); //Turn off stat LED  */
 
 
 
-    // Measure Relative Humidity from the HTU21D or Si7021
-  humidity = myHumidity.getRH();
+  
 
-  // Measure Temperature from the HTU21D or Si7021
-  tempf = myHumidity.getTempF();
-
-  Serial.print("Temp:");
+ /* Serial.print("Temp:");
   Serial.print(tempf);
   Serial.print("F, ");
 
   Serial.print("Humidity:");
   Serial.print(humidity);
-  Serial.println("%");
+  Serial.println("%"); */
   // Temperature is measured every time RH is requested.
   // It is faster, therefore, to read it from previous RH
   // measurement with getTemp() instead with readTemp()
