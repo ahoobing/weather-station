@@ -30,7 +30,15 @@ Distributed as-is; no warranty is given.
 #include <Wire.h> //I2C needed for sensors
 #include "SparkFunMPL3115A2.h" //Pressure sensor - Search "SparkFun MPL3115" and install from Library Manager
 #include "SparkFun_Si7021_Breakout_Library.h" //Humidity sensor - Search "SparkFun Si7021" and install from Library Manager
+#include <SoftwareSerial.h> //Needed for GPS
+#include <TinyGPS++.h> //GPS parsing - Available through the Library Manager.
 
+
+
+TinyGPSPlus gps;
+
+static const int RXPin = 5, TXPin = 4; //GPS is attached to pin 4(TX from GPS) and pin 5(RX into GPS)
+SoftwareSerial ss(RXPin, TXPin); 
 
 MPL3115A2 myPressure; //Create an instance of the pressure sensor
 Weather myHumidity;//Create an instance of the humidity sensor
@@ -47,6 +55,7 @@ const byte WSPEED = 3;
 const byte RAIN = 2;
 const byte STAT1 = 7;
 const byte STAT2 = 8;
+const byte GPS_PWRCTL = 6; //Pulling this pin low puts GPS to sleep but maintains RTC and RAM
 
 // analog I/O pins
 const byte REFERENCE_3V3 = A3;
@@ -355,9 +364,15 @@ void setup()
   //TODO This causes the server requests to not work.
  // pinMode(STAT2, OUTPUT); //Status LED Green
 
+  pinMode(GPS_PWRCTL, OUTPUT);
+  digitalWrite(GPS_PWRCTL, HIGH); //Pulling this pin low puts GPS to sleep but maintains RTC and RAM
+
   pinMode(WSPEED, INPUT_PULLUP); // input from wind meters windspeed sensor
   pinMode(RAIN, INPUT_PULLUP); // input from wind meters rain gauge sensor
 
+//TODO - this is not in the sample code.  A3 on the board should be driving 3.3
+  pinMode(REFERENCE_3V3, OUTPUT);
+  pinMode(REFERENCE_3V3, HIGH);
   /*pinMode(REFERENCE_3V3, OUTPUT);
   pinMode(BATT, OUTPUT);
 
@@ -555,7 +570,15 @@ void calcWeather()
 }
 
 
-
+static void smartdelay(unsigned long ms)
+{
+  unsigned long start = millis();
+  do 
+  {
+    while (ss.available())
+      gps.encode(ss.read());
+  } while (millis() - start < ms);
+}
 
 void loop() 
 {
@@ -607,6 +630,12 @@ void loop()
       //windgust_10m[minutes_10m] = 0; //Zero out this minute's gust
     }
 
+
+    smartdelay(800); //Wait 1 second, and gather GPS data
+
+    Serial.print(",altitude=");
+    Serial.print(gps.altitude.meters());
+  
     //Report all readings every second
      //printWeather();
 
