@@ -35,7 +35,7 @@ Distributed as-is; no warranty is given.
 
 
 
-//TinyGPSPlus gps;
+TinyGPSPlus gps;
 
 static const PROGMEM int RXPin = 5, TXPin = 4; //GPS is attached to pin 4(TX from GPS) and pin 5(RX into GPS)
 SoftwareSerial ss(RXPin, TXPin); 
@@ -48,6 +48,8 @@ Weather myHumidity;//Create an instance of the humidity sensor
 //////////////////////////////
 // Replace these two character strings with the name and
 // password of your WiFi network.
+
+//DO NOT USER PROGMEM here
 const char mySSID[] = "hobie4";
 const char myPSK[] = "hoob13579";
 
@@ -83,7 +85,7 @@ const char destServer[] = "https://weather-server-hoob.herokuapp.com";
 //-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 long lastSecond; //The millis counter to see when a second rolls by
 byte seconds; //When it hits 60, increase the current minute
-byte seconds_2m; //Keeps track of the "wind speed/dir avg" over last 2 minutes array of data
+//byte seconds_2m; //Keeps track of the "wind speed/dir avg" over last 2 minutes array of data
 byte minutes; //Keeps track of where we are in various arrays of data
 byte minutes_10m; //Keeps track of where we are in wind gust/dir over last 10 minutes array of data
 
@@ -106,7 +108,7 @@ volatile byte windClicks = 0;
 //int winddiravg[WIND_DIR_AVG_SIZE]; //120 ints to keep track of 2 minute average
 //float windgust_10m[10]; //10 floats to keep track of 10 minute max
 //int windgustdirection_10m[10]; //10 ints to keep track of 10 minute max
-volatile float rainHour[60]; //60 floating numbers to keep track of 60 minutes of rain
+volatile float rainHour[10]; //60 floating numbers to keep track of 10 minutes of rain
 
 //These are all the weather values that wunderground expects:
 int winddir = 0; // [0-360 instantaneous wind direction]
@@ -347,18 +349,21 @@ void setup()
   // Serial Monitor is used to control the demo and view
   // debug information.
   Serial.begin(9600);
+
+ //TODO - for the GPS 
+   ss.begin(9600); 
  
 
   // initializeESP8266() verifies communication with the WiFi
   // shield, and sets it up.
-  initializeESP8266();
+ initializeESP8266();
 
   // connectESP8266() connects to the defined WiFi network.
   connectESP8266();
 
   // displayConnectInfo prints the Shield's local IP
   // and the network it's connected to.
-  displayConnectInfo();
+  displayConnectInfo(); 
 
  // pinMode(STAT1, OUTPUT); //Status LED Blue
 
@@ -571,7 +576,7 @@ void calcWeather()
 }
 
 
-/*static void smartdelay(unsigned long ms)
+static void smartdelay(unsigned long ms)
 {
   unsigned long start = millis();
   do 
@@ -579,13 +584,13 @@ void calcWeather()
     while (ss.available())
       gps.encode(ss.read());
   } while (millis() - start < ms);
-}*/
+}
 
 void loop() 
 {
 
   calcWeather();
-  clientDemo();
+  clientDemo(); 
 
   
    
@@ -595,7 +600,7 @@ void loop()
     lastSecond += 1000;
 
     //Take a speed and direction reading every second for 2 minute average
-    if (++seconds_2m > 119) seconds_2m = 0;
+    //if (++seconds_2m > 119) seconds_2m = 0;
 
     //Calc the wind speed and direction every second for 120 second to get 2 minute average
     float currentSpeed = get_wind_speed();
@@ -620,7 +625,7 @@ void loop()
       windgustdir = currentDirection;
     } */
 
-    if (++seconds > 59)
+  /*  if (++seconds > 59)
     {
       seconds = 0;
 
@@ -629,13 +634,15 @@ void loop()
 
       rainHour[minutes] = 0; //Zero out this minute's rainfall amount
       //windgust_10m[minutes_10m] = 0; //Zero out this minute's gust
-    }
+    } */
 
 
-   // smartdelay(800); //Wait 1 second, and gather GPS data
+   /*TODO - need to remove once we figure out the SW serial bus
+   
+    smartdelay(800); //Wait 1 second, and gather GPS data
 
-    //Serial.print(F(",altitude="));
-    //Serial.print(gps.altitude.meters());
+    Serial.print(F(",altitude="));
+    Serial.println(gps.altitude.meters()); *?
   
     //Report all readings every second
      //printWeather();
