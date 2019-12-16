@@ -141,7 +141,7 @@ void rainIRQ()
 // Count rain gauge bucket tips as they occur
 // Activated by the magnet and reed switch in the rain gauge, attached to input D2
 {
-  Serial.println("rain irq");
+  Serial.println(F("rain irq"));
   raintime = millis(); // grab current time
   raininterval = raintime - rainlast; // calculate interval between this and last event
 
@@ -157,7 +157,7 @@ void rainIRQ()
 void wspeedIRQ()
 // Activated by the magnet in the anemometer (2 ticks per rotation), attached to input D3
 {
-  Serial.println("wind speed irq");
+  Serial.println(F("wind speed irq"));
   if (millis() - lastWindIRQ > 10) // Ignore switch-bounce glitches less than 10ms (142MPH max reading) after the reed switch closes
   {
     lastWindIRQ = millis(); //Grab the current time
@@ -237,7 +237,7 @@ void clientDemo()
   // print and write can be used to send data to a connected
   // client connection.
   //client.print(httpPostRequest);
-  Serial.println("made it here");
+  Serial.println(F("made it here"));
   client.println("POST /stats HTTP/1.1");
   client.println("Host: weather-server-hoob.herokuapp.com");
   client.println("Content-Type: application/x-www-form-urlencoded");
@@ -256,7 +256,7 @@ void clientDemo()
   //client.println(postDataString);
   
  
-   Serial.println("again");
+   //Serial.println("again");
 
   // available() will return the number of characters
   // currently in the receive buffer.
@@ -633,7 +633,7 @@ void loop()
 
     smartdelay(800); //Wait 1 second, and gather GPS data
 
-    Serial.print(",altitude=");
+    Serial.print(F(",altitude="));
     Serial.print(gps.altitude.meters());
   
     //Report all readings every second

@@ -58,16 +58,16 @@
 
   if(x == 1)
   {
-    Serial.println("Si7021 Found");
+    Serial.println(F("Si7021 Found"));
     //Serial.println(ID_Temp_Hum, HEX);
   }
   else if(x == 2)
   {
-    Serial.println("HTU21D Found");
+    Serial.println(F("HTU21D Found"));
     //Serial.println(ID_Temp_Hum, HEX);
   }
   else
-  	Serial.println("No Devices Detected");
+  	Serial.println(F("No Devices Detected"));
   	//Serial.println(ID_Temp_Hum, HEX);
 }
 
