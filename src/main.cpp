@@ -35,9 +35,9 @@ Distributed as-is; no warranty is given.
 
 
 
-TinyGPSPlus gps;
+//TinyGPSPlus gps;
 
-static const int RXPin = 5, TXPin = 4; //GPS is attached to pin 4(TX from GPS) and pin 5(RX into GPS)
+static const PROGMEM int RXPin = 5, TXPin = 4; //GPS is attached to pin 4(TX from GPS) and pin 5(RX into GPS)
 SoftwareSerial ss(RXPin, TXPin); 
 
 MPL3115A2 myPressure; //Create an instance of the pressure sensor
@@ -51,22 +51,23 @@ Weather myHumidity;//Create an instance of the humidity sensor
 const char mySSID[] = "hobie4";
 const char myPSK[] = "hoob13579";
 
-const byte WSPEED = 3;
-const byte RAIN = 2;
-const byte STAT1 = 7;
-const byte STAT2 = 8;
-const byte GPS_PWRCTL = 6; //Pulling this pin low puts GPS to sleep but maintains RTC and RAM
+const PROGMEM byte WSPEED = 3;
+const PROGMEM byte RAIN = 2;
+const PROGMEM byte STAT1 = 7;
+const PROGMEM byte STAT2 = 8;
+const PROGMEM byte GPS_PWRCTL = 6; //Pulling this pin low puts GPS to sleep but maintains RTC and RAM
 
 // analog I/O pins
-const byte REFERENCE_3V3 = A3;
-const byte LIGHT = A1;
-const byte BATT = A2;
-const byte WDIR = A0;
+const PROGMEM byte REFERENCE_3V3 = A3;
+const PROGMEM byte LIGHT = A1;
+const PROGMEM byte BATT = A2;
+const PROGMEM byte WDIR = A0;
 
 
 //////////////////
 // HTTP Strings //
 //////////////////
+//DO NOT use PROGMEM for this.  Seems to kill the connection.
 const char destServer[] = "https://weather-server-hoob.herokuapp.com";
 /*const String htmlHeader = "HTTP/1.1 200 OK\r\n"
                           "Content-Type: text/html\r\n"
@@ -570,7 +571,7 @@ void calcWeather()
 }
 
 
-static void smartdelay(unsigned long ms)
+/*static void smartdelay(unsigned long ms)
 {
   unsigned long start = millis();
   do 
@@ -578,7 +579,7 @@ static void smartdelay(unsigned long ms)
     while (ss.available())
       gps.encode(ss.read());
   } while (millis() - start < ms);
-}
+}*/
 
 void loop() 
 {
@@ -631,10 +632,10 @@ void loop()
     }
 
 
-    smartdelay(800); //Wait 1 second, and gather GPS data
+   // smartdelay(800); //Wait 1 second, and gather GPS data
 
-    Serial.print(F(",altitude="));
-    Serial.print(gps.altitude.meters());
+    //Serial.print(F(",altitude="));
+    //Serial.print(gps.altitude.meters());
   
     //Report all readings every second
      //printWeather();
