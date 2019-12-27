@@ -130,6 +130,10 @@ float pressure = 0;
 float batt_lvl = 11.8; //[analog value from 0 to 1023]
 float light_lvl = 455; //[analog value from 0 to 1023]
 
+float currentSpeed = 0.0;
+
+ int currentDirection = 0;
+
 // volatiles are subject to modification by IRQs
 volatile unsigned long raintime, rainlast, raininterval, rain;
 
@@ -144,7 +148,7 @@ void rainIRQ()
 // Count rain gauge bucket tips as they occur
 // Activated by the magnet and reed switch in the rain gauge, attached to input D2
 {
-  Serial.println(F("rain irq"));
+  //Serial.println(F("rain irq"));
   raintime = millis(); // grab current time
   raininterval = raintime - rainlast; // calculate interval between this and last event
 
@@ -160,7 +164,7 @@ void rainIRQ()
 void wspeedIRQ()
 // Activated by the magnet in the anemometer (2 ticks per rotation), attached to input D3
 {
-  Serial.println(F("wind speed irq"));
+ // Serial.println(F("wind speed irq"));
   if (millis() - lastWindIRQ > 10) // Ignore switch-bounce glitches less than 10ms (142MPH max reading) after the reed switch closes
   {
     lastWindIRQ = millis(); //Grab the current time
@@ -241,7 +245,8 @@ void clientDemo()
   // client connection.
   //client.print(httpPostRequest);
   Serial.println(F("made it here"));
-  client.println("POST /stats HTTP/1.1");
+  //TODO need to fix the server side so I don't need the extra slash
+  client.println("POST /stats/ HTTP/1.1");
   client.println("Host: weather-server-hoob.herokuapp.com");
   client.println("Content-Type: application/x-www-form-urlencoded");
   client.print("Content-Length: ");
@@ -251,9 +256,9 @@ void clientDemo()
   client.print("&h=" + String(humidity));
   client.print("&b=" + String(batt_lvl));
   client.print("&l=" + String(light_lvl));
-  client.print("&wd=10" + String(winddir));
-  client.print("&r=" + String(rainin));
-  client.println("&w=" + String(windspeedmph));
+  client.print("&wd=" + String(currentDirection));
+  client.print("&r=" + String(dailyrainin));
+  client.println("&w=" + String(currentSpeed));
   
 
   //client.println(postDataString);
@@ -433,9 +438,9 @@ float get_wind_speed()
 
   windSpeed *= 1.492; //4 * 1.492 = 5.968MPH
 
-  /* Serial.println();
+   Serial.println();
     Serial.print("Windspeed:");
-    Serial.println(windSpeed);*/
+    Serial.println(windSpeed);
 
   return (windSpeed);
 }
@@ -462,6 +467,7 @@ int get_wind_direction()
 
   adc = analogRead(WDIR); // get the current reading from the sensor
 
+
   // The following table is ADC readings for the wind direction sensor output, sorted from low to high.
   // Each threshold is the midpoint between adjacent headings. The output is degrees for that ADC reading.
   // Note that these are not in compass degree order! See Weather Meters datasheet for more information.
@@ -485,10 +491,10 @@ int get_wind_direction()
   return (-1); // error, disconnected?
 }
 
-void calcWeather()
+/*void calcWeather()
 {
   //Calc winddir
-  winddir = get_wind_direction();
+  //winddir = get_wind_direction();
 
   //Calc windspeed
   //windspeedmph = get_wind_speed(); //This is calculated in the main loop on line 185
@@ -545,7 +551,52 @@ void calcWeather()
   } */
 
   
-  humidity = myHumidity.getRH();
+ /* humidity = myHumidity.getRH();
+  //float temp_h = myHumidity.readTemperature();
+  //Serial.print(" TempH:");
+  //Serial.print(temp_h, 2);
+
+  //Calc tempf from pressure sensor
+   tempf = myHumidity.readTempF();
+  //Serial.print(" TempP:");
+ // Serial.print(tempf, 2);
+
+  //Total rainfall for the day is calculated within the interrupt
+  //Calculate amount of rainfall for the last 60 minutes
+  rainin = 0;
+  /*for (int i = 0 ; i < 60 ; i++)
+    rainin += rainHour[i]; */
+
+  //Calc pressure
+  /*pressure = myPressure.readPressure();
+ /* Serial.print(" Pressure ");
+  Serial.print( pressure, 2); */
+
+  //Calc dewptf
+
+  //Calc light level
+/*  light_lvl = get_light_level();
+
+  //Calc battery level
+  batt_lvl = get_battery_level(); */
+//}
+
+
+static void smartdelay(unsigned long ms)
+{
+  unsigned long start = millis();
+  do 
+  {
+    while (ss.available())
+      gps.encode(ss.read());
+  } while (millis() - start < ms);
+}
+
+void loop() 
+{
+
+  
+   humidity = myHumidity.getRH();
   //float temp_h = myHumidity.readTemperature();
   //Serial.print(" TempH:");
   //Serial.print(temp_h, 2);
@@ -573,23 +624,11 @@ void calcWeather()
 
   //Calc battery level
   batt_lvl = get_battery_level();
-}
 
+  currentSpeed = get_wind_speed();
 
-static void smartdelay(unsigned long ms)
-{
-  unsigned long start = millis();
-  do 
-  {
-    while (ss.available())
-      gps.encode(ss.read());
-  } while (millis() - start < ms);
-}
+  currentDirection = get_wind_direction();
 
-void loop() 
-{
-
-  calcWeather();
   clientDemo(); 
 
   
@@ -597,16 +636,16 @@ void loop()
 
     //digitalWrite(STAT1, HIGH); //Blink stat LED
 
-    lastSecond += 1000;
+//    lastSecond += 1000;
 
     //Take a speed and direction reading every second for 2 minute average
     //if (++seconds_2m > 119) seconds_2m = 0;
 
     //Calc the wind speed and direction every second for 120 second to get 2 minute average
-    float currentSpeed = get_wind_speed();
-    windspeedmph = currentSpeed;//update global variable for windspeed when using the printWeather() function
+    
+   // windspeedmph = currentSpeed;//update global variable for windspeed when using the printWeather() function
     //float currentSpeed = random(5); //For testing
-    int currentDirection = get_wind_direction();
+   
   /*  windspdavg[seconds_2m] = (int)currentSpeed;
     winddiravg[seconds_2m] = currentDirection; */
     //if(seconds_2m % 10 == 0) displayArrays(); //For testing
