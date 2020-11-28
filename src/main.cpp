@@ -356,19 +356,22 @@ void setup()
   Serial.begin(9600);
 
  //TODO - for the GPS 
-   ss.begin(9600); 
+  ss.begin(9600); 
  
 
   // initializeESP8266() verifies communication with the WiFi
   // shield, and sets it up.
- initializeESP8266();
+// TODO: not working 
+//initializeESP8266();
 
   // connectESP8266() connects to the defined WiFi network.
-  connectESP8266();
+  //TODO: not working
+  //connectESP8266();
 
   // displayConnectInfo prints the Shield's local IP
   // and the network it's connected to.
-  displayConnectInfo(); 
+  //TODO: not working
+  //displayConnectInfo(); 
 
  // pinMode(STAT1, OUTPUT); //Status LED Blue
 
@@ -629,7 +632,15 @@ void loop()
 
   currentDirection = get_wind_direction();
 
-  clientDemo(); 
+  Serial.println("tempf=" + String(tempf));
+  Serial.println("&humidity=" + String(humidity));
+  Serial.println("&battlevel=" + String(batt_lvl));
+  Serial.println("&light=" + String(light_lvl));
+  Serial.println("&winddirection=" + String(currentDirection));
+  Serial.println("&rain=" + String(dailyrainin));
+  Serial.println("&windspeed=" + String(currentSpeed));
+
+  //clientDemo(); 
 
   
    
@@ -676,9 +687,15 @@ void loop()
     } */
 
 
+  smartdelay(800); //Wait 1 second, and gather GPS data
+  Serial.println("Altitude: " + String(gps.altitude.feet()));
+  Serial.println("Lat: " + String(gps.location.lat()));
+  Serial.println("Long: " + String(gps.location.lng()));
+  Serial.println("Direction " + String(gps.course.deg()));
+
    /*TODO - need to remove once we figure out the SW serial bus
    
-    smartdelay(800); //Wait 1 second, and gather GPS data
+    
 
     Serial.print(F(",altitude="));
     Serial.println(gps.altitude.meters()); *?
